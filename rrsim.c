@@ -129,6 +129,36 @@ void parse_program(char *arg, int pid)
 }
 
 /**
+ * Run one process for one time slice or until it blocks/exits.
+ */
+int run_process(struct queue *q, struct process *p, int proc_count)
+{
+    int run_time = MIN(QUANTUM, p->awake_time_remaining);
+
+    p->awake_time_remaining -= run_time;
+    update_sleeping_processes(proc_count, run_time);
+
+    if (p->awake_time_remaining > 0) {
+        queue_enqueue(q, p);
+    }
+    else {
+        p->pc++;
+
+        if (p->program[p->pc] == 0) {
+            p->state = EXITED;
+            printf("PID %d: Exiting\n", p->pid);
+        }
+        else {
+            p->state = SLEEPING;
+            p->sleep_time_remaining = p->program[p->pc];
+            printf("PID %d: Sleeping for %d ms\n", p->pid, p->sleep_time_remaining);
+        }
+    }
+
+    return run_time;
+}
+
+/**
  * Main.
  */
 int main(int argc, char **argv)
@@ -146,9 +176,9 @@ int main(int argc, char **argv)
 
     (void) clock;
     (void) count_active_processes;
-    (void) update_sleeping_processes;
     (void) next_wakeup_time;
     (void) wake_ready_processes;
+    (void) run_process;
 
     queue_free(q);
 }
