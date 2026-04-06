@@ -177,6 +177,7 @@ int main(int argc, char **argv)
     while (count_active_processes(proc_count) > 0) {
         struct process *runner;
         int elapsed;
+        int printed_clock = 0;
 
         if (queue_is_empty(q)) {
             elapsed = next_wakeup_time(proc_count);
@@ -185,15 +186,18 @@ int main(int argc, char **argv)
 
             printf("=== Clock %d ms ===\n", clock);
             wake_ready_processes(q, proc_count);
+            printed_clock = 1;
+        }
+
+        if (queue_is_empty(q))
+            continue;
+
+        if (!printed_clock) {
+            printf("=== Clock %d ms ===\n", clock);
+            wake_ready_processes(q, proc_count);
         }
 
         runner = queue_dequeue(q);
-
-        if (runner == NULL)
-            continue;
-
-        printf("=== Clock %d ms ===\n", clock);
-        wake_ready_processes(q, proc_count);
 
         printf("PID %d: Running\n", runner->pid);
         elapsed = run_process(q, runner, proc_count);
