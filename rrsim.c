@@ -27,6 +27,82 @@ struct process {
 static struct process table[MAX_PROCS];
 
 /**
+ * Count how many processes have not exited yet.
+ */
+int count_active_processes(int proc_count)
+{
+    int i;
+    int active = 0;
+
+    for (i = 0; i < proc_count; i++) {
+        if (table[i].state != EXITED)
+            active++;
+    }
+
+    return active;
+}
+
+/**
+ * Subtract elapsed time from all sleeping processes.
+ */
+void update_sleeping_processes(int proc_count, int elapsed)
+{
+    int i;
+
+    for (i = 0; i < proc_count; i++) {
+        if (table[i].state == SLEEPING)
+            table[i].sleep_time_remaining -= elapsed;
+    }
+}
+
+/**
+ * Find the smallest remaining sleep time among sleeping processes.
+ */
+int next_wakeup_time(int proc_count)
+{
+    int i;
+    int found = 0;
+    int min_sleep = 0;
+
+    for (i = 0; i < proc_count; i++) {
+        if (table[i].state == SLEEPING) {
+            if (!found || table[i].sleep_time_remaining < min_sleep) {
+                min_sleep = table[i].sleep_time_remaining;
+                found = 1;
+            }
+        }
+    }
+
+    return min_sleep;
+}
+
+/**
+ * Wake up any sleeping processes whose timers have expired.
+ */
+void wake_ready_processes(struct queue *q, int proc_count)
+{
+    int i;
+
+    for (i = 0; i < proc_count; i++) {
+        if (table[i].state == SLEEPING && table[i].sleep_time_remaining <= 0) {
+            table[i].pc++;
+
+            if (table[i].program[table[i].pc] == 0) {
+                table[i].state = EXITED;
+                printf("PID %d: Exiting\n", table[i].pid);
+            }
+            else {
+                table[i].state = READY;
+                table[i].awake_time_remaining = table[i].program[table[i].pc];
+                printf("PID %d: Waking up for %d ms\n",
+                       table[i].pid, table[i].awake_time_remaining);
+                queue_enqueue(q, &table[i]);
+            }
+        }
+    }
+}
+
+/**
  * Parse one command-line program into a process table entry.
  */
 void parse_program(char *arg, int pid)
@@ -69,6 +145,10 @@ int main(int argc, char **argv)
     }
 
     (void) clock;
+    (void) count_active_processes;
+    (void) update_sleeping_processes;
+    (void) next_wakeup_time;
+    (void) wake_ready_processes;
 
     queue_free(q);
 }
