@@ -174,11 +174,33 @@ int main(int argc, char **argv)
         queue_enqueue(q, &table[i]);
     }
 
-    (void) clock;
-    (void) count_active_processes;
-    (void) next_wakeup_time;
-    (void) wake_ready_processes;
-    (void) run_process;
+    while (count_active_processes(proc_count) > 0) {
+        struct process *runner;
+        int elapsed;
+
+        if (queue_is_empty(q)) {
+            elapsed = next_wakeup_time(proc_count);
+            clock += elapsed;
+            update_sleeping_processes(proc_count, elapsed);
+
+            printf("=== Clock %d ms ===\n", clock);
+            wake_ready_processes(q, proc_count);
+        }
+
+        runner = queue_dequeue(q);
+
+        if (runner == NULL)
+            continue;
+
+        printf("=== Clock %d ms ===\n", clock);
+        wake_ready_processes(q, proc_count);
+
+        printf("PID %d: Running\n", runner->pid);
+        elapsed = run_process(q, runner, proc_count);
+        printf("PID %d: Ran for %d ms\n", runner->pid, elapsed);
+
+        clock += elapsed;
+    }
 
     queue_free(q);
 }
